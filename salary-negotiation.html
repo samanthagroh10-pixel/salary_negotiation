@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The cost of not negotiating</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f5f4f0;
+    color: #1a1a18;
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+
+  .container {
+    max-width: 780px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 22px;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+
+  .subtitle {
+    font-size: 14px;
+    color: #73726c;
+    margin-bottom: 1.5rem;
+  }
+
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    border: 0.5px solid rgba(0,0,0,0.12);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 28px;
+  }
+
+  .ctrl-row { display: flex; flex-direction: column; gap: 4px; }
+
+  .ctrl-label {
+    font-size: 12px;
+    color: #73726c;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .ctrl-val { font-weight: 500; color: #1a1a18; }
+
+  input[type=range] {
+    width: 100%;
+    accent-color: #185FA5;
+    cursor: pointer;
+  }
+
+  .highlight-box {
+    background: #fff;
+    border-radius: 12px;
+    border: 0.5px solid rgba(0,0,0,0.12);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .highlight-numbers { display: flex; align-items: baseline; gap: 20px; flex-wrap: wrap; }
+
+  .big-num {
+    font-size: 36px;
+    font-weight: 500;
+    color: #1D9E75;
+    line-height: 1;
+  }
+
+  .big-sub {
+    font-size: 12px;
+    color: #73726c;
+    margin-top: 4px;
+  }
+
+  .divider-v {
+    width: 0.5px;
+    background: rgba(0,0,0,0.12);
+    height: 48px;
+    align-self: center;
+  }
+
+  .mins-ctrl { flex: 1; min-width: 140px; }
+  .mins-ctrl label { font-size: 12px; color: #73726c; display: block; margin-bottom: 4px; }
+
+  .hl-eyebrow {
+    font-size: 11px;
+    font-weight: 500;
+    color: #73726c;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 1rem;
+  }
+
+  .stat {
+    background: #f5f4f0;
+    border-radius: 8px;
+    padding: 0.65rem 0.85rem;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: #73726c;
+    margin-bottom: 4px;
+    line-height: 1.3;
+  }
+
+  .stat-val { font-size: 17px; font-weight: 500; color: #1a1a18; }
+  .stat-val.green { color: #1D9E75; }
+  .stat-val.amber { color: #BA7517; }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: #73726c;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .legend {
+    display: flex;
+    gap: 16px;
+    font-size: 12px;
+    color: #73726c;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+
+  .leg-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    display: inline-block;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+
+  .chart-wrap { position: relative; margin-bottom: 1.5rem; }
+
+  .note {
+    font-size: 12px;
+    color: #888780;
+    margin-top: 1.5rem;
+    line-height: 1.6;
+    border-top: 0.5px solid rgba(0,0,0,0.1);
+    padding-top: 1rem;
+  }
+
+  @media (max-width: 520px) {
+    .controls { grid-template-columns: 1fr; }
+    .stat-grid { grid-template-columns: 1fr; }
+    .big-num { font-size: 28px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>The cost of not negotiating</h1>
+  <p class="subtitle">Adjust the sliders to see how a single salary negotiation compounds over your career.</p>
+
+  <div class="card">
+    <div class="controls">
+      <div class="ctrl-row">
+        <span class="ctrl-label">Starting offer <span class="ctrl-val" id="lbl-base"></span></span>
+        <input type="range" id="sl-base" min="60000" max="80000" step="1000" value="68000">
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">Negotiated to <span class="ctrl-val" id="lbl-neg"></span></span>
+        <input type="range" id="sl-neg" min="0" max="15000" step="500" value="5000">
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">Annual raise <span class="ctrl-val" id="lbl-raise"></span></span>
+        <input type="range" id="sl-raise" min="1" max="6" step="0.5" value="3">
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">Annual bonus (% of salary) <span class="ctrl-val" id="lbl-bonus"></span></span>
+        <input type="range" id="sl-bonus" min="0" max="15" step="1" value="5">
+      </div>
+    </div>
+  </div>
+
+  <div class="highlight-box">
+    <div style="flex:1;min-width:220px">
+      <div class="hl-eyebrow">One conversation — 20-year return</div>
+      <div class="highlight-numbers">
+        <div>
+          <div class="big-num" id="hl-perdollar"></div>
+          <div class="big-sub">earned per minute of negotiating</div>
+        </div>
+        <div class="divider-v"></div>
+        <div>
+          <div class="big-num" id="hl-total20" style="font-size:28px"></div>
+          <div class="big-sub">cumulative gap over 20 years</div>
+        </div>
+      </div>
+    </div>
+    <div class="mins-ctrl">
+      <label>Negotiation length: <strong id="lbl-mins"></strong></label>
+      <input type="range" id="sl-mins" min="5" max="60" step="5" value="15" style="accent-color:#BA7517">
+    </div>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat"><div class="stat-label">Year 5 salary — without negotiation</div><div class="stat-val" id="s5-no"></div></div>
+    <div class="stat"><div class="stat-label">Year 5 salary — with negotiation</div><div class="stat-val green" id="s5-yes"></div></div>
+    <div class="stat"><div class="stat-label">Cumulative left on table — year 5</div><div class="stat-val amber" id="s5-gap"></div></div>
+  </div>
+
+  <div class="section-label">5-year view — annual total compensation</div>
+  <div class="legend">
+    <span><span class="leg-dot" style="background:#185FA5"></span>Without negotiation</span>
+    <span><span class="leg-dot" style="background:#1D9E75"></span>With negotiation</span>
+    <span><span class="leg-dot" style="background:#BA7517;opacity:0.6"></span>Cumulative gap (right axis)</span>
+  </div>
+  <div class="chart-wrap" style="height:200px"><canvas id="chart5"></canvas></div>
+
+  <div class="stat-grid">
+    <div class="stat"><div class="stat-label">Year 20 salary — without negotiation</div><div class="stat-val" id="s20-no"></div></div>
+    <div class="stat"><div class="stat-label">Year 20 salary — with negotiation</div><div class="stat-val green" id="s20-yes"></div></div>
+    <div class="stat"><div class="stat-label">Cumulative left on table — year 20</div><div class="stat-val amber" id="s20-gap"></div></div>
+  </div>
+
+  <div class="section-label">20-year view — annual total compensation</div>
+  <div class="legend">
+    <span><span class="leg-dot" style="background:#185FA5"></span>Without negotiation</span>
+    <span><span class="leg-dot" style="background:#1D9E75"></span>With negotiation</span>
+    <span><span class="leg-dot" style="background:#BA7517;opacity:0.6"></span>Cumulative gap (right axis)</span>
+  </div>
+  <div class="chart-wrap" style="height:240px"><canvas id="chart20"></canvas></div>
+
+  <p class="note">Assumes raises and bonuses compound annually on the starting salary. Model is simplified — job changes, promotions, and market shifts can reset trajectories. The point is the compounding mechanism, not a precise forecast.</p>
+
+</div>
+
+<script>
+const fmt  = v => '$' + Math.round(v).toLocaleString();
+const fmtK = v => '$' + Math.round(v/1000) + 'k';
+
+let chart5, chart20;
+
+function buildData(base, bump, raise, bonusPct, years) {
+  const r = 1 + raise/100;
+  const noNeg = [], withNeg = [], cumGap = [];
+  let cum = 0;
+  for (let y = 1; y <= years; y++) {
+    const s0 = base * Math.pow(r, y-1) * (1 + bonusPct/100);
+    const s1 = (base + bump) * Math.pow(r, y-1) * (1 + bonusPct/100);
+    noNeg.push(s0);
+    withNeg.push(s1);
+    cum += (s1 - s0);
+    cumGap.push(cum);
+  }
+  return { noNeg, withNeg, cumGap };
+}
+
+function update() {
+  const base  = +document.getElementById('sl-base').value;
+  const bump  = +document.getElementById('sl-neg').value;
+  const raise = +document.getElementById('sl-raise').value;
+  const bonus = +document.getElementById('sl-bonus').value;
+  const mins  = +document.getElementById('sl-mins').value;
+
+  document.getElementById('lbl-base').textContent  = fmt(base);
+  document.getElementById('lbl-neg').textContent   = '+' + fmt(bump) + ' → ' + fmt(base + bump);
+  document.getElementById('lbl-raise').textContent = raise + '%';
+  document.getElementById('lbl-bonus').textContent = bonus + '%';
+  document.getElementById('lbl-mins').textContent  = mins + ' min';
+
+  const d5  = buildData(base, bump, raise, bonus, 5);
+  const d20 = buildData(base, bump, raise, bonus, 20);
+
+  document.getElementById('hl-perdollar').textContent = fmt(Math.round(d20.cumGap[19] / mins));
+  document.getElementById('hl-total20').textContent   = fmt(d20.cumGap[19]);
+
+  document.getElementById('s5-no').textContent   = fmt(d5.noNeg[4]);
+  document.getElementById('s5-yes').textContent  = fmt(d5.withNeg[4]);
+  document.getElementById('s5-gap').textContent  = fmt(d5.cumGap[4]);
+  document.getElementById('s20-no').textContent  = fmt(d20.noNeg[19]);
+  document.getElementById('s20-yes').textContent = fmt(d20.withNeg[19]);
+  document.getElementById('s20-gap').textContent = fmt(d20.cumGap[19]);
+
+  const labels5  = ['Year 1','Year 2','Year 3','Year 4','Year 5'];
+  const labels20 = Array.from({length:20}, (_, i) => 'Yr ' + (i+1));
+  const tickColor = '#73726c';
+  const gridColor = 'rgba(0,0,0,0.06)';
+
+  if (!chart5) {
+    chart5 = new Chart(document.getElementById('chart5'), {
+      type: 'bar',
+      data: {
+        labels: labels5,
+        datasets: [
+          { label: 'Without', data: d5.noNeg, backgroundColor: '#378ADD', borderRadius: 3, borderSkipped: false, yAxisID: 'y' },
+          { label: 'With',    data: d5.withNeg, backgroundColor: '#1D9E75', borderRadius: 3, borderSkipped: false, yAxisID: 'y' },
+          { label: 'Cumulative gap', data: d5.cumGap, type: 'line', borderColor: '#BA7517', backgroundColor: 'rgba(186,117,23,0.08)', fill: true, tension: 0.4, pointRadius: 3, borderWidth: 2, yAxisID: 'y2' }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + fmt(ctx.raw) } } },
+        scales: {
+          x:  { ticks: { color: tickColor, font: { size: 11 } }, grid: { display: false } },
+          y:  { ticks: { color: tickColor, font: { size: 11 }, callback: fmtK }, grid: { color: gridColor }, position: 'left' },
+          y2: { ticks: { color: '#BA7517', font: { size: 11 }, callback: fmtK }, grid: { display: false }, position: 'right' }
+        }
+      }
+    });
+  } else {
+    chart5.data.datasets[0].data = d5.noNeg;
+    chart5.data.datasets[1].data = d5.withNeg;
+    chart5.data.datasets[2].data = d5.cumGap;
+    chart5.update('none');
+  }
+
+  if (!chart20) {
+    chart20 = new Chart(document.getElementById('chart20'), {
+      type: 'line',
+      data: {
+        labels: labels20,
+        datasets: [
+          { label: 'Without', data: d20.noNeg, borderColor: '#378ADD', backgroundColor: 'rgba(55,138,221,0.07)', fill: true, tension: 0.3, pointRadius: 2, borderWidth: 2 },
+          { label: 'With',    data: d20.withNeg, borderColor: '#1D9E75', backgroundColor: 'rgba(29,158,117,0.08)', fill: true, tension: 0.3, pointRadius: 2, borderWidth: 2 },
+          { label: 'Cumulative gap', data: d20.cumGap, borderColor: '#BA7517', backgroundColor: 'rgba(186,117,23,0.07)', fill: true, tension: 0.3, pointRadius: 2, borderWidth: 2, borderDash: [4,3], yAxisID: 'y2' }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + fmt(ctx.raw) } } },
+        scales: {
+          x:  { ticks: { color: tickColor, font: { size: 11 }, maxRotation: 45, autoSkip: false }, grid: { display: false } },
+          y:  { ticks: { color: tickColor, font: { size: 11 }, callback: fmtK }, grid: { color: gridColor }, position: 'left' },
+          y2: { ticks: { color: '#BA7517', font: { size: 11 }, callback: fmtK }, grid: { display: false }, position: 'right' }
+        }
+      }
+    });
+  } else {
+    chart20.data.datasets[0].data = d20.noNeg;
+    chart20.data.datasets[1].data = d20.withNeg;
+    chart20.data.datasets[2].data = d20.cumGap;
+    chart20.update('none');
+  }
+}
+
+['sl-base','sl-neg','sl-raise','sl-bonus','sl-mins'].forEach(id => {
+  document.getElementById(id).addEventListener('input', update);
+});
+
+update();
+</script>
+</body>
+</html>
